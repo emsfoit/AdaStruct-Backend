@@ -58,7 +58,8 @@ class HGTGraph:
 
     def __init__(self,
                  graph_params,
-                 input_dfs):
+                 input_dfs,
+                 logger):
         """
         Parameters
         ----------
@@ -74,7 +75,12 @@ class HGTGraph:
         self.emb = graph_params['emb']
         self.main_node = graph_params['main_node']
         self.node_to_calculate_repitition = graph_params['node_to_calculate_repitition']
-
+        if logger:
+            self.logger = logger
+        else:
+            def func(msg):
+                print(msg)
+            logger = func
         # self.test_bar = graph_params['weight_split_range']['test_range'][0]
         # Nodes connected directly to main node
         self.nodes_direct_with_main = []
@@ -111,7 +117,7 @@ class HGTGraph:
 
         self.input_dfs = input_dfs
         if len(self.input_dfs) == 0:
-            print("input data is empty, please make sure to pass data in input_dfs")
+            self.logger("input data is empty, please make sure to pass data in input_dfs")
             return
 
         self.graph_data = defaultdict(lambda: {})
@@ -132,7 +138,7 @@ class HGTGraph:
    
     def load_graph_data(self):
         """ Setup graph structure and add embeddings for nodes """
-        print(".. Importing data")
+        self.logger(".. Importing data")
         for node in self.nodes:
             node_column_features = { feature['column_name']: feature['feature_name'] for feature in node['features']}
 
@@ -196,7 +202,7 @@ class HGTGraph:
             model = tr.XLNetModel.from_pretrained('xlnet-base-cased',
                                                   output_hidden_states=True,
                                                   output_attentions=True).to(self.device)
-            print(f'.... Adding embeddings for {node_type}:{feature}')
+            self.logger(f'.... Adding embeddings for {node_type}:{feature}')
             for key, value in node_data.items():
                 try:
                     input_ids = torch.tensor(
@@ -208,9 +214,9 @@ class HGTGraph:
                         [0].mean(dim=0).mean(dim=0).view(-1, 1)).sum(dim=0)
                     value[emb_name] = rep.tolist()
                 except Exception as e:
-                    print(e)
+                    self.logger(e)
         else:
-            print('Random number will be used as embeding')
+            self.logger('Random number will be used as embeding')
             i = 0
             for key, value in node_data.items():
                 i = i +1
@@ -223,7 +229,7 @@ class HGTGraph:
 
     def add_edges(self):
         """ Connect nodes """
-        print('.. Connecting nodes:')
+        self.logger('.. Connecting nodes:')
         for edge in self.edges:
             source = edge['source']
             target = edge['target']
@@ -248,7 +254,7 @@ class HGTGraph:
             fields += [weight] if weight is not None else []
             fields += [edge_type_feature] if edge_type_feature is not None else []
 
-            print(f".... > {edge['name']}: {fields}")
+            self.logger(f".... > {edge['name']}: {fields}")
 
             df = input_df[fields].drop_duplicates()
             df['edge_type'] = f'{source}_{target}_' + df[edge_type_feature] if edge_type_feature else f'{source}_{target}'
@@ -267,7 +273,7 @@ class HGTGraph:
                 for row in df.to_numpy()
                 if f"{source}_{row[0]}" in self.G.nodes and f"{target}_{row[1]}" in self.G.nodes  
             ])
-        print("Edges building done")
+        self.logger("Edges building done")
 
     def pass_nodes_info(self):
         """ Calculate main node info and pass it to other nodes """
@@ -279,7 +285,7 @@ class HGTGraph:
 
         for node_type in self.nodes:
             if node_type != self.main_node:
-                print(f'.... > Passing info from {self.main_node} to {node_type}')
+                self.logger(f'.... > Passing info from {self.main_node} to {node_type}')
                 node_ids = self.get_data(node_type).index.to_list()
                 for id in node_ids: self.get_node_repetition(id, main_node_ids)
 
@@ -336,7 +342,7 @@ class HGTGraph:
         """ Pass embeddings from the main node to other nodes """
 
         # Pass embeddings to nodes that are directly connected to main node"""
-        print(f'.. Passing embeddings from {self.main_node}')
+        self.logger(f'.. Passing embeddings from {self.main_node}')
         main_node_data = self.get_data(self.main_node)
         if isinstance(main_node_data['emb'][0], (np.ndarray)):
             main_node_data['emb'] = main_node_data['emb'].str[1:-1]
@@ -349,17 +355,17 @@ class HGTGraph:
             if node['name'] in list(self.nodes_not_direct_with_main):
                 for edge in self.edge_emb:
                   if edge[0] == node['name']:
-                    print(f".... > to {node['name']} via {edge[1]}")
+                    self.logger(f".... > to {node['name']} via {edge[1]}")
                     self.get_emb(node['name'], edge[1], self.graph_data[edge[1]])
             elif node['name'] != self.main_node:
-                print(f".... > to {node['name']}")
+                self.logger(f".... > to {node['name']}")
                 self.get_emb(node['name'], self.main_node, main_node_data)
 
         # Pass embeddings to nodes that are not directly connected to main node"""
         for node_name in self.nodes_not_direct_with_main:
             for edge in self.edge_emb:
                 if edge[0] == node_name:
-                    print(f".... > to {node_name} via {edge[1]}")
+                    self.logger(f".... > to {node_name} via {edge[1]}")
                     self.get_emb(node_name, edge[1], self.graph_data[edge[1]])
 
     def get_emb(self, node, node_with_emb, node_with_emb_data):
@@ -473,7 +479,7 @@ def feature_extractor(layer_data, graph, graph_params):
         indxs[_type] = idxs
 
         if _type == graph_params['main_node']:
-            main_node_feature = find_in_obj(graph_params['emb'], 'node', [graph_params['main_node']])['feature']
+            main_node_feature = find_in_obj(graph_params['emb'], 'node', graph_params['main_node'])['feature']
             texts = np.array([graph.nodes[node][main_node_feature] for node in idxs], dtype=np.str)
 
     return feature, weights, indxs, texts

@@ -1,7 +1,7 @@
 import pandas as pd
 import math
-from utils.utils import logger
-from pyHGT.datax import *
+from tools.hgt.utils.utils import logger
+from tools.hgt.pyHGT.datax import *
 
 def handle_attention(graph, attention, edges_attentions, edge_index, node_type, node_dict, indxs):
     node_num_name = {val[1]: key for key, val in node_dict.items()}
