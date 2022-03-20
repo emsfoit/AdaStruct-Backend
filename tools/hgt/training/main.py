@@ -29,15 +29,15 @@ parser = argparse.ArgumentParser(
     description='Training GNN on main_node - sub_node classification task')
 
 """Dataset arguments"""
-parser.add_argument('--graph_dir', type=str, default='output/graphs/OAG_grap_reddit_10000.pk',
+parser.add_argument('--graph_dir', type=str, default='storage/OAG_grap_reddit_10000.pk',
                     help='The address of preprocessed graph.')
-parser.add_argument('--model_dir', type=str, default='output',
+parser.add_argument('--model_dir', type=str, default='storage',
                     help='The address for storing the models and optimization results.')
 parser.add_argument('--graph_params_dir', type=str, default='config/HGT_graph_params_Reddit.json',
                     help='The address of the graph params file')
 parser.add_argument('--main_node', type=str, default='post',
                     help='The name of the main node in the graph')
-parser.add_argument('--predicted_node_name', type=str, default='field',
+parser.add_argument('--predicted_node_name', type=str, default='subreddit',
                     help='The name of the node that its values to be predicted')
 parser.add_argument('--edge_name', type=str, default='post_subreddit',
                     help='The name of edge')
@@ -71,7 +71,7 @@ parser.add_argument('--optimizer', type=str, default='adamw',
                     help='optimizer to use.')
 parser.add_argument('--data_percentage', type=float, default=1.0,
                     help='Percentage of training and validation data to use')
-parser.add_argument('--n_epoch', type=int, default=30,
+parser.add_argument('--n_epoch', type=int, default=15,
                     help='Number of epoch to run')
 parser.add_argument('--n_pool', type=int, default=4,
                     help='Number of process to sample subgraph')
@@ -110,11 +110,11 @@ with open(args.graph_params_dir) as json_file:
 weight_thresholds = graph_params['weight_split_range']['valid_range']
 
 train_range = {w: True for w in graph.graph['weights'] if w !=
-               None and w < weight_thresholds[0]}
+               None and w < weight_thresholds['start']}
 valid_range = {w: True for w in graph.graph['weights'] if w !=
-               None and w >= weight_thresholds[0] and w <= weight_thresholds[1]}
+               None and w >= weight_thresholds['start'] and w <= weight_thresholds['end']}
 test_range = {w: True for w in graph.graph['weights'] if w !=
-              None and w > weight_thresholds[1]}
+              None and w > weight_thresholds['end']}
 
 rev_edge_name = f'rev_{args.edge_name}'
 
