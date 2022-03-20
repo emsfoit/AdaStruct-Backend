@@ -5,14 +5,17 @@ class Project(db.Model):
     __tablename__ = 'project'
     id = db.Column(db.Integer, primary_key=True, unique=True)
     name = db.Column(db.String(128), index=True, nullable=False)
-    graph_setting = db.Column(JSON)
     created_at = db.Column(db.DateTime(128), server_default=db.func.now())
     # Relationship
     company_id = db.Column(db.Integer, db.ForeignKey('company.id'))
-    files = db.relationship('DatasetFile', backref='project', lazy=True, cascade="all,delete" )
+    graphs = db.relationship('Graph', backref='project', lazy=True, cascade="all,delete" )
 
     def __repr__(self):
         return '<Project Name: {} >'.format(self.name)
+
+    @classmethod
+    def get_user_projects(cls, current_user):
+        return Project.query.filter(Project.company_id == current_user.company_id)
 
     @staticmethod
     def get_all():
@@ -26,14 +29,6 @@ class Project(db.Model):
         data = {
             'id': self.id,
             'name': self.name,
-            'graph_setting': self.graph_setting,
             'created_at': self.created_at
-        }
-        return data
-
-    def get_name(self):
-        data = {
-            'id': self.id,
-            'name': self.name,
         }
         return data
