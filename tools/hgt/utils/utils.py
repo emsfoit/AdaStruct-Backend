@@ -122,3 +122,9 @@ def logger(data):
     # with open(log_file_name, "a") as file_object:
     #     data = "\n {}".format(data)
     #     file_object.write(data)
+
+class dotdict(dict):
+    """dot.notation access to dictionary attributes"""
+    __getattr__ = dict.get
+    __setattr__ = dict.__setitem__
+    __delattr__ = dict.__delitem__
