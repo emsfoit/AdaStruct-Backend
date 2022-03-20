@@ -26,6 +26,10 @@ from app.models import user
 from app.models import project
 from app.models import company
 from app.models import dataset
+from app.models import graph
+from app.models import process_log
+
+
 
 
 
@@ -34,11 +38,14 @@ from app.controllers.users.account_controller import bp_user_account
 app.register_blueprint(bp_user_account, url_prefix='/api/users')
 
 
-from app.controllers.users.projects_controller import bp_user_projects
+from app.controllers.users.project_controller import bp_user_projects
 app.register_blueprint(bp_user_projects, url_prefix='/api/users')
 
 from app.controllers.users.dataset_controller import bp_user_datasets
 app.register_blueprint(bp_user_datasets, url_prefix='/api/users')
 
-UPLOAD_FOLDER = 'dataset'
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+from app.controllers.users.graph_controller import bp_user_graphs
+app.register_blueprint(bp_user_graphs, url_prefix='/api/users')
+
+from app.controllers.users.process_log_controller import bp_user_process_logs
+app.register_blueprint(bp_user_process_logs, url_prefix='/api/users')
