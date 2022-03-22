@@ -1,8 +1,26 @@
-falsk
-flask_sqlalchemy
+# TODO Add All the required packages
+# Flask tools
+# falsk
+# flask_sqlalchemy
+# flask_jwt_extended
+# flask_cors
+# flask_migrate
+# flask_login
+# flask_bcrypt
+# HGT
+dill
+pathos
+Pillow
+numpy
 pandas
-flask_jwt_extended
-flask_cors
-flask_migrate
-flask_login
-flask_bcrypt
+tqdm
+seaborn
+matplotlib
+transformers
+sentencepiece
+sentencepiece
+networkx
+scipy
+absl-py
+tensorflow
+# Add torch
