@@ -12,8 +12,6 @@ from datetime import datetime
 from multiprocessing import Process
 from flask import current_app
 
-from tools.hgt.utils.utils import logger
-
 bp_user_graphs = Blueprint('graphs', 'graph')
 
 
@@ -51,7 +49,7 @@ def create_graph(current_user):
 @bp_user_graphs.route('/graphs', methods=['GET'])  # return all graphs
 @Auth.verify_token
 def get_all_graphs(current_user):
-    graphs = Graph.get_users_graph(current_user).all()
+    graphs = Graph.get_user_graphs(current_user).all()
     result = [graph.to_dict() for graph in graphs]
     return {'data': result}, 200
 
@@ -59,7 +57,7 @@ def get_all_graphs(current_user):
 @bp_user_graphs.route('graphs/<int:id>', methods=['GET'])
 @Auth.verify_token
 def get_graph(current_user, id):
-    graph = Graph.get_users_graph(current_user).filter(Graph.id==id).first()
+    graph = Graph.get_user_graphs(current_user).filter(Graph.id==id).first()
     if graph is None:
         response_object = {
             'status': 'fail',
@@ -72,7 +70,7 @@ def get_graph(current_user, id):
 @bp_user_graphs.route('graphs/<int:id>', methods=['DELETE'])
 @Auth.verify_token
 def delete_graph(current_user, id):
-    graph = Graph.get_users_graph(current_user).filter(Graph.id==id).first()
+    graph = Graph.get_user_graphs(current_user).filter(Graph.id==id).first()
     if graph is None:
         response_object = {
             'status': 'fail',
@@ -87,7 +85,7 @@ def delete_graph(current_user, id):
 @bp_user_graphs.route('graphs/<int:id>',  methods=['PATCH'])
 @Auth.verify_token
 def update_graph(current_user, id):
-    graph = Graph.get_users_graph(current_user).filter(Graph.id==id).first()
+    graph = Graph.get_user_graphs(current_user).filter(Graph.id==id).first()
     if graph is None:
         response_object = {
             'status': 'fail',
@@ -152,7 +150,7 @@ def build_graph(current_user, graph):
 @bp_user_graphs.route('graphs/<int:id>/download',  methods=['GET'])
 @Auth.verify_token
 def download_graph(current_user, id):
-    graph = Graph.get_users_graph(current_user).filter(Graph.id==id).first()
+    graph = Graph.get_user_graphs(current_user).filter(Graph.id==id).first()
     if graph is None or not graph.path:
         response_object = {
             'status': 'fail',
