@@ -12,12 +12,14 @@ class Graph(db.Model):
     # Relationship
     project_id = db.Column(db.Integer, db.ForeignKey('project.id'))
     files = db.relationship('DatasetFile', backref='graph', lazy=True, cascade="all,delete" )
+    inferences = db.relationship('Inference', backref='graph', lazy=True, cascade="all,delete" )
+
 
     def __repr__(self):
         return '<Graph Name: {} >'.format(self.name)
 
     @classmethod
-    def get_users_graph(cls, current_user):
+    def get_user_graphs(cls, current_user):
         return Graph.query.join(Project).filter(Project.company_id == current_user.company_id)
         
     @staticmethod

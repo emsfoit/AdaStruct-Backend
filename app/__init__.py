@@ -49,3 +49,6 @@ app.register_blueprint(bp_user_graphs, url_prefix='/api/users')
 
 from app.controllers.users.process_log_controller import bp_user_process_logs
 app.register_blueprint(bp_user_process_logs, url_prefix='/api/users')
+
+from app.controllers.users.inference_controller import bp_user_inferences
+app.register_blueprint(bp_user_inferences, url_prefix='/api/users')

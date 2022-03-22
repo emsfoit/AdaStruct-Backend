@@ -1,12 +1,14 @@
 
+from numpy import short
 from app import db
 from sqlalchemy.dialects.postgresql import JSON
 from app.models.graph import Graph
+from app.models.process_log import ProcessLog
 from app.models.project import Project
 
 
 class Inference(db.Model):
-    __tablename__ = 'training'
+    __tablename__ = 'inference'
     id = db.Column(db.Integer, primary_key=True, unique=True)
     name = db.Column(db.String(128), index=True, nullable=False)
     model_path = db.Column(db.String(300), nullable=True)
@@ -31,12 +33,14 @@ class Inference(db.Model):
         return Inference.query.get(int(id))
 
     def to_dict(self):
+        process_logs = ProcessLog.query.filter(ProcessLog.graph_id == self.graph_id and ProcessLog.type == "training").all()
         data = {
             'id': self.id,
             'name': self.name,
             'settings': self.settings,
             'model_path': self.model_path,
-            'created_at': self.created_at
+            'created_at': self.created_at,
+            'process_logs': [p.to_dict(short=True) for p in process_logs]
         }
         return data
 
