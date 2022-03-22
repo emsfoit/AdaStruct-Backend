@@ -42,7 +42,7 @@ def upload_file(current_user):
     filename = rename_file(filename, graph_id)
     type = request.form.get('type', filename.rsplit('.', 1)[1])
 
-    graph = Graph.get_users_graph(current_user).filter(Graph.id == int(graph_id)).first()
+    graph = Graph.get_user_graphs(current_user).filter(Graph.id == int(graph_id)).first()
     if not graph:
         response_object = {
             'status': 'fail',
@@ -72,7 +72,7 @@ def upload_file(current_user):
 @Auth.verify_token
 def get_all_datasets_files(current_user):
     graph_id = request.args.get('graph_id')
-    graph = Graph.get_users_graph(current_user).filter(Graph.id == int(graph_id)).first()
+    graph = Graph.get_user_graphs(current_user).filter(Graph.id == int(graph_id)).first()
     if not graph:
         return {"status": "failed", "message": 'Graph could not be found'}, 400
     files = DatasetFile.get_user_datasets(current_user).filter(DatasetFile.graph_id==int(graph_id))
