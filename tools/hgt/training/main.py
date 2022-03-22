@@ -16,7 +16,7 @@ import networkx as nx
 from tools.hgt.pyHGT.datax import *
 from tools.hgt.pyHGT.model import GNN, Classifier
 from tools.hgt.pyHGT.attention import *
-from tools.hgt.utils.utils import randint, ndcg_at_k, mean_reciprocal_rank, logger, dotdict
+from tools.hgt.utils.utils import randint, ndcg_at_k, mean_reciprocal_rank, dotdict
 #import torch
 from torch.utils.tensorboard import SummaryWriter
 
@@ -27,9 +27,8 @@ from app.models.inference import Inference
 from app.models.graph import Graph
 
 
-def run(args, graph_params):
+def run(args, graph_params, logger, metrics_logger):
     global node_classification_sample
-    writer = SummaryWriter()
     start_time = time.time()
     logger(args)
 
@@ -275,8 +274,10 @@ def run(args, graph_params):
                 train_step += 1
                 scheduler.step(train_step)
                 del res, loss
-        writer.add_scalar('training loss', np.average(train_losses), epoch)
-        writer.add_histogram('classifier.linear.bias', classifier.linear.bias, epoch)
+        obj = {'epoch': epoch, 'type': 'training_loss', 'value': np.average(train_losses)}
+        metrics_logger(json.dumps(obj))
+        # writer.add_scalar('training loss', np.average(train_losses), epoch)
+        # writer.add_histogram('classifier.linear.bias', classifier.linear.bias, epoch)
 
         """Valid (x1 <= weight <= x2)"""
         model.eval()
@@ -299,9 +300,13 @@ def run(args, graph_params):
                     valid_res += [ai[bi.cpu().numpy()]]
             valid_ndcg = np.average([ndcg_at_k(resi, len(resi))
                                     for resi in valid_res])
-            writer.add_scalar('NDCG', valid_ndcg, epoch)
+            obj = {'epoch': epoch, 'type': 'NDCG', 'value': valid_ndcg}
+            metrics_logger(json.dumps(obj))
+            # writer.add_scalar('NDCG', valid_ndcg, epoch)
             valid_mrr = np.average(mean_reciprocal_rank(valid_res))
-            writer.add_scalar('MRR', valid_mrr, epoch)
+            obj = {'epoch': epoch, 'type': 'MRR', 'value': valid_mrr}
+            metrics_logger(json.dumps(obj))
+            # writer.add_scalar('MRR', valid_mrr, epoch)
             if valid_ndcg > best_val:
                 best_val = valid_ndcg
                 torch.save(model, os.path.join(
@@ -368,15 +373,19 @@ if __name__ == "__main__":
         description='Training GNN on main_node - sub_node classification task')
 
     parser.add_argument('-inference_id', type=str, default="",
-                        help='Include fake edges')
+                        help='inference_id')
     parser.add_argument('-process_log_id', type=str, default="",
-                        help='remove weak edges')
+                        help='process_log_id')
+    parser.add_argument('-model_dir', type=str, default="storage",
+                        help='model_dir')
       
     args = parser.parse_args()
     process_log = ProcessLog.get(int(args.process_log_id))
     inferecnce = Inference.get(int(args.inference_id))
     graph = Graph.get(inferecnce.graph_id)
     args_settings = json.loads(inferecnce.settings)
-    graph_settings = json.load(graph.settings)
+    graph_settings = graph.settings
+    args_settings['graph_dir'] = graph.path
+    args_settings['model_dir'] = args.model_dir
     print(inferecnce.to_dict())
-    run(dotdict(args_settings), dotdict(args_settings))
+    run(dotdict(args_settings), dotdict(graph_settings), logger=process_log.add_to_log, metrics_logger=process_log.add_to_extra_info)
