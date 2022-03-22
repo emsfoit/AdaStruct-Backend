@@ -10,14 +10,14 @@ bp_user_account = Blueprint('/api/user', 'user')
 @bp_user_account.route('/sign_up', methods=['POST'])
 def create_account():
     data = request.get_json(force=True)
-    user = User.query.filter_by(email=data['email']).first()
+    user = User.query.filter_by(email=data['user_email']).first()
     company = Company.query.filter_by(name=data.get('company_name')).first()
 
     if user is None and company is None:
         first_name = data.get('first_name')
         last_name = data.get('last_name')
         role = data.get('role')
-        email = data.get('email')
+        email = data.get('user_email')
         password = data.get('password')
         new_user = User(first_name, last_name, role, email, password)
         db.session.add(new_user)
