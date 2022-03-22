@@ -115,3 +115,5 @@ celerybeat.pid
 migrations/
 
 venv/
+
+storage/
