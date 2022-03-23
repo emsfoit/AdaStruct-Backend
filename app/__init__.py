@@ -52,3 +52,11 @@ app.register_blueprint(bp_user_process_logs, url_prefix='/api/users')
 
 from app.controllers.users.inference_controller import bp_user_inferences
 app.register_blueprint(bp_user_inferences, url_prefix='/api/users')
+
+
+
+@app.before_first_request
+def create_tables():
+    process_log.ProcessLog.clean()
+
+# Clean the old processes

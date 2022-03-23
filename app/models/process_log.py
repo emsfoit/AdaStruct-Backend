@@ -13,6 +13,13 @@ class ExtraInfo(db.Model):
     created_at = db.Column(db.DateTime(128), server_default=db.func.now())
     # Relationship
     process_log_id = db.Column(db.Integer, db.ForeignKey('process_log.id'))
+    
+    def to_dict(self):
+        data = {
+            'data': self.data,
+            'created_at': self.created_at
+        }
+        return data
 
 class ProcessLog(db.Model):
     __tablename__ = 'process_log'
@@ -42,6 +49,13 @@ class ProcessLog(db.Model):
     def get(id):
         return ProcessLog.query.get(int(id))
 
+    @staticmethod
+    def clean():
+        logs =  ProcessLog.query.filter(ProcessLog.status.contains('running')).all()
+        for log in logs:
+            log.status = "terminated"
+        db.session.commit()
+
     def to_dict(self, short=False):
         data = {
             'id': self.id,
@@ -51,7 +65,7 @@ class ProcessLog(db.Model):
             'created_at': self.created_at
         }
         if not short:
-            data['extra_info'] =  self.extra_info
+            data['extra_info'] = [elm.to_dict() for elm in self.extra_info]
             data['log'] =  self.log
         return data
 
