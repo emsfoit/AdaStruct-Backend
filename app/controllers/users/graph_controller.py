@@ -11,6 +11,7 @@ import os
 from datetime import datetime
 from multiprocessing import Process
 from flask import current_app
+import json
 
 bp_user_graphs = Blueprint('graphs', 'graph')
 
@@ -33,6 +34,11 @@ def create_graph(current_user):
         response_object["project"] = ["project is invalid"]
     if error:
         return response_object, 400
+    if settings and isinstance(settings, str): 
+        try:
+            settings = json.loads(settings)
+        except:
+            settings = settings
     graph = Graph.query.filter(Graph.project_id==int(project_id), Graph.name==name).first()
     if not graph:
         new_graph = Graph(name=name, project_id=int(project_id), settings=settings)
@@ -94,12 +100,22 @@ def update_graph(current_user, id):
         return response_object, 404
  
     data = request.get_json(force=True)
-    if data.get('settings'):
+
+    settings = data.get('settings', None)
+    name = data.get('name', None)
+
+    if settings and isinstance(settings, str): 
+        try:
+            settings = json.loads(settings)
+        except:
+            settings = settings
         graph.settings = data.get('settings')
-    if data.get('name'):
-        graph.name = data.get('name')
+
+    if name:
+        graph.name = name
 
     db.session.commit()
+    # TODO: Build only when we pass a parameter called build or something like that
     if True:
         heavy_process = Process(
             target=build_graph,
@@ -107,7 +123,6 @@ def update_graph(current_user, id):
             daemon=True
         )
         heavy_process.start()
-        # build_graph(current_user, graph)
     return {"message": 'Graph has been updated!!', "data": graph.to_dict()}
 
 
@@ -130,7 +145,9 @@ def build_graph(current_user, graph):
         df = pd.read_csv(f.path, sep=f.sep)
         data[f.filename] = df
     output_graph_file=os.path.join(output_graph_file, 'graph.pk')
-    process_log = ProcessLog(name="test", type="build", graph_id= graph.id, status="started", log="")
+    dt_string = now.strftime("%d-%m-%Y_%H-%M-%S")
+    name = "{} - {}".format(graph.name, dt_string)
+    process_log = ProcessLog(name=name, type="build", graph_id= graph.id, status="running", log="")
     db.session.add(process_log)
     db.session.commit()
     def logger(msg):

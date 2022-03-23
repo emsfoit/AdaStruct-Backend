@@ -17,15 +17,15 @@ from tools.hgt.pyHGT.datax import *
 from tools.hgt.pyHGT.model import GNN, Classifier
 from tools.hgt.pyHGT.attention import *
 from tools.hgt.utils.utils import randint, ndcg_at_k, mean_reciprocal_rank, dotdict
-#import torch
 from torch.utils.tensorboard import SummaryWriter
 
 from warnings import filterwarnings
 filterwarnings("ignore")
+# Flask
 from app.models.process_log import ProcessLog
 from app.models.inference import Inference
 from app.models.graph import Graph
-
+from app import db
 
 def run(args, graph_params, logger, metrics_logger):
     global node_classification_sample
@@ -183,7 +183,7 @@ def run(args, graph_params, logger, metrics_logger):
     """Initialize GNN (model is specified by conv_name) and Classifier"""
     # TODO: make in_dim dynamic
     # in_dim = graph.graph['main_node_embedding_length'] + 401
-    in_dim = 768 + 768 +  1
+    in_dim = 768 + 400 +  1
     # TODO: make use_RTE dynamic
     num_relations = len(graph.graph['meta']) + 3 if args.include_fake_edges else len(graph.graph['meta']) + 1
     gnn = GNN(in_dim=in_dim,
@@ -274,7 +274,7 @@ def run(args, graph_params, logger, metrics_logger):
                 train_step += 1
                 scheduler.step(train_step)
                 del res, loss
-        obj = {'epoch': epoch, 'type': 'training_loss', 'value': np.average(train_losses)}
+        obj = {'epoch': int(epoch), 'type': 'training_loss', 'value': float(np.average(train_losses))}
         metrics_logger(json.dumps(obj))
         # writer.add_scalar('training loss', np.average(train_losses), epoch)
         # writer.add_histogram('classifier.linear.bias', classifier.linear.bias, epoch)
@@ -300,11 +300,11 @@ def run(args, graph_params, logger, metrics_logger):
                     valid_res += [ai[bi.cpu().numpy()]]
             valid_ndcg = np.average([ndcg_at_k(resi, len(resi))
                                     for resi in valid_res])
-            obj = {'epoch': epoch, 'type': 'NDCG', 'value': valid_ndcg}
+            obj = {'epoch': int(epoch), 'type': 'NDCG', 'value': float(valid_ndcg)}
             metrics_logger(json.dumps(obj))
             # writer.add_scalar('NDCG', valid_ndcg, epoch)
             valid_mrr = np.average(mean_reciprocal_rank(valid_res))
-            obj = {'epoch': epoch, 'type': 'MRR', 'value': valid_mrr}
+            obj = {'epoch': int(epoch), 'type': 'MRR', 'value': float(valid_mrr)}
             metrics_logger(json.dumps(obj))
             # writer.add_scalar('MRR', valid_mrr, epoch)
             if valid_ndcg > best_val:
@@ -388,4 +388,12 @@ if __name__ == "__main__":
     args_settings['graph_dir'] = graph.path
     args_settings['model_dir'] = args.model_dir
     print(inferecnce.to_dict())
-    run(dotdict(args_settings), dotdict(graph_settings), logger=process_log.add_to_log, metrics_logger=process_log.add_to_extra_info)
+    try:
+        run(dotdict(args_settings), dotdict(graph_settings), logger=process_log.add_to_log, metrics_logger=process_log.add_to_extra_info)
+        process_log.status = "completed"
+        process_log.add_to_log("rocess completed!")
+        db.session.commit()
+    except Exception as e:
+        process_log.add_to_log("process failed!")
+        process_log.status = "failed"
+        db.session.commit()

@@ -469,8 +469,8 @@ def feature_extractor(layer_data, graph, graph_params):
         if 'node_emb' in graph.nodes[idxs[0]]:
             feature[_type] = np.array([graph.nodes[node]['node_emb'] for node in idxs], dtype=np.float)
         else:
-            # TODO: Change 768 or 400 to node_emb len 
-            feature[_type] = np.zeros([len(idxs), 768])
+            # TODO: Change 768 or 400 to node_emb len
+            feature[_type] = np.zeros([len(idxs), 400])
 
         feature[_type] = np.concatenate((feature[_type], list(graph.nodes[node]['emb'] for node in idxs),\
                                          np.log10(np.array([graph.nodes[node]['repetition'] for node in idxs]).reshape(-1, 1) + 0.01)), axis=1)

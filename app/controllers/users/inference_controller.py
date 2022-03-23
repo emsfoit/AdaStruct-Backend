@@ -10,6 +10,7 @@ from flask import current_app
 from app.models.graph import Graph
 from app.models.inference import Inference
 import subprocess
+import json
 
 bp_user_inferences = Blueprint('inferences', 'inference')
 
@@ -32,6 +33,11 @@ def create_inference(current_user):
         response_object["graph"] = ["graph is invalid"]
     if error:
         return response_object, 400
+    if settings and isinstance(settings, str): 
+        try:
+            settings = json.loads(settings)
+        except:
+            settings = settings
     inference = Inference.get_user_inferences(current_user).filter(Inference.graph_id==int(graph_id), Graph.name==name).first()
     if not inference:
         new_inference = Inference(name=name, graph_id=int(graph_id), settings=settings)
@@ -92,12 +98,19 @@ def update_inference(current_user, id):
         return response_object, 404
  
     data = request.get_json(force=True)
-    if data.get('settings'):
-        inference.settings = data.get('settings')
-    if data.get('name'):
-        inference.name = data.get('name')
-    db.session.commit()
+    settings =  data.get('settings', None)
+    name = data.get('name', None)
 
+    if settings and isinstance(settings, str):
+        try:
+            inference.settings = json.loads(settings)
+        except:
+            inference.settings = settings
+    else:
+        inference.settings = settings
+    if name:
+        inference.name = name
+    db.session.commit()
     return {"message": 'Inference has been updated!!', "data": inference.to_dict()}
 
 
@@ -116,7 +129,6 @@ def download_inference(current_user, id):
     return send_file(path, as_attachment=True)
 
 
-
 @bp_user_inferences.route('inferences/<int:id>/train',  methods=['get'])
 @Auth.verify_token
 def train(current_user, id):
@@ -128,20 +140,22 @@ def train(current_user, id):
         }
         return response_object, 404
 
-    if True:
-        process_log = ProcessLog(name="test", type="training", graph_id=inference.graph_id, status="Init", log="")
-        db.session.add(process_log)
-        db.session.commit()
-        heavy_process = Process(
-            target=run_inference,
-            args=(current_user, inference, process_log),
-            daemon=True
-        )
-        heavy_process.start()
-        process_log.status = "training,{}".format(heavy_process.pid)
-        db.session.commit()
-        # run_inference(current_user, inference)
-    return {"message": 'Training will start soon!', "data": inference.to_dict()}
+    now = datetime.now()
+    dt_string = now.strftime("%d-%m-%Y_%H-%M-%S")
+    name = "{} - {}".format(inference.name, dt_string)
+    process_log = ProcessLog(name=name, type="training", graph_id=inference.graph_id, status="Init", log="")
+    db.session.add(process_log)
+    db.session.commit()
+    heavy_process = Process(
+        target=run_inference,
+        args=(current_user, inference, process_log),
+        daemon=True
+    )
+    heavy_process.start()
+    process_log.status = "running,{}".format(heavy_process.pid)
+    db.session.commit()
+    # run_inference(current_user, inference)
+    return {"message": 'Training will start soon!', "data": inference.to_dict(), "log_id": process_log.id}
 
 # build inference process
 def run_inference(current_user, inference, process_log):
@@ -165,12 +179,11 @@ def run_inference(current_user, inference, process_log):
     try:
         subprocess.call(['python', '-m', 'tools.hgt.training.main', '-inference_id', "{}".format(inference.id), '-process_log_id',"{}".format(process_log.id)])
     except Exception as e:
-        process_log.add_to_log("Failed")
+        process_log.add_to_log("process failed!")
         process_log.status = "failed"
         db.session.commit()
+    # some how it's forgetting the value so will get it again
     inference.modal_path = output_inference_file
-    process_log.add_to_log("process completed!")
-    process_log.status = "completed"
     db.session.commit()
 
 
@@ -186,7 +199,6 @@ def kill(current_user, id):
     if not process_log:
         return {"message": 'Process Not found'}, 400
     try:
-        101140
         p = [process for process in mp.active_children() if Process.pid == 101140]
         p.terminate()
         process_log.add_to_log("Terminated by the user")
